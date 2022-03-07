@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:test_sciensa/helpers/math_helper.dart';
 import 'package:test_sciensa/helpers/sciensa_colors.dart';
 import 'package:test_sciensa/helpers/sciensa_radius.dart';
+import 'package:test_sciensa/helpers/sciensa_spacing.dart';
+import 'package:test_sciensa/helpers/text_extension.dart';
 import 'package:test_sciensa/home/components/circle_button.dart';
 import 'package:test_sciensa/home/components/tick.dart';
 
@@ -25,15 +26,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Animation<Size>? _translateBackgroundAnimation;
   Animation<double>? _translateTicksAnimation;
   Animation<double>? _translateTextAnimation;
+  Animation<double>? _translateButtonAnimation;
+  Animation<double>? _translateAnimatedTick;
 
-  final secondDuration = 1 / 31;
+  var _middleY = 0.0;
+  var _size = Size.zero;
+
+  final animatedTickHeight = Tick.tickSize.height * 1.5;
 
   @override
   void initState() {
     super.initState();
 
-    _animationCronController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 31));
+    _animationCronController = AnimationController(
+        vsync: this, duration: Duration(seconds: _defaultSeconds + 1));
 
     _animationCronController.addListener(() {
       if (_animationCronController.status == AnimationStatus.completed) {
@@ -54,7 +60,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       _translateTextAnimation = Tween(
         begin: 0.0,
-        end: 130.0,
+        end: SciensaSpacing.xxl,
+      ).animate(CurvedAnimation(
+          parent: _animationElementsController, curve: Curves.easeIn));
+
+      _translateButtonAnimation = Tween(
+        begin: -CircleButton.size,
+        end: SciensaSpacing.xl,
+      ).animate(CurvedAnimation(
+          parent: _animationElementsController, curve: Curves.easeIn));
+
+      _translateAnimatedTick = Tween(
+        begin: _middleY,
+        end: 0.0,
       ).animate(CurvedAnimation(
           parent: _animationElementsController, curve: Curves.easeIn));
 
@@ -68,27 +86,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _startCron(Size screenSize) {
-    final fraction = screenSize.height / 30;
-    var _lastHeight = screenSize.height;
-    var _lastTranslated = screenSize.height;
+  void _startCron() {
+    final fraction = _size.height / _defaultSeconds;
+    var _lastHeight = _size.height;
+    var _lastTranslated = _size.height;
 
     _scaleBackgroundAnimation = TweenSequence(<TweenSequenceItem<Size>>[
       TweenSequenceItem(
         tween: Tween(
-          begin: Size(Tick.tickSize.width, Tick.tickSize.height),
-          end: screenSize,
+          begin: Size(Tick.tickSize.width, animatedTickHeight),
+          end: _size,
         ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 1,
       ),
-      ...List.generate(30, (index) {
+      ...List.generate(_defaultSeconds, (index) {
         final _currentHeight = _lastHeight;
         _lastHeight = _lastHeight - fraction;
+
         return TweenSequenceItem(
           tween: Tween(
-            begin: Size(screenSize.width, _currentHeight),
-            end:
-                Size(screenSize.width, _lastHeight.clamp(0, screenSize.height)),
+            begin: Size(_size.width, _currentHeight),
+            end: Size(_size.width, _lastHeight.clamp(0, _size.height)),
           ).chain(CurveTween(curve: Curves.easeInOut)),
           weight: 1,
         );
@@ -98,18 +116,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _translateBackgroundAnimation = TweenSequence(<TweenSequenceItem<Size>>[
       TweenSequenceItem(
         tween: Tween(
-          begin: const Size(0, 0),
-          end: screenSize,
+          begin: Size.zero,
+          end: _size,
         ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 1,
       ),
-      ...List.generate(30, (index) {
+      ...List.generate(_defaultSeconds, (index) {
         final _currentTranslated = _lastTranslated;
         _lastTranslated = _lastTranslated - fraction * 2;
         return TweenSequenceItem(
           tween: Tween(
-            begin: Size(screenSize.width, _currentTranslated),
-            end: Size(screenSize.width, _lastTranslated),
+            begin: Size(_size.width, _currentTranslated),
+            end: Size(_size.width, _lastTranslated),
           ).chain(CurveTween(curve: Curves.easeInOut)),
           weight: 1,
         );
@@ -133,140 +151,135 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final middleY = size.height / 2;
+    if (_size == Size.zero) {
+      _size = MediaQuery.of(context).size;
+      _middleY = _size.height / 2 - animatedTickHeight / 2;
+    }
 
     return Material(
-      child: Container(
-        color: SciensaColors.background,
-        child: Stack(
-          children: [
-            AnimatedBuilder(
+      color: SciensaColors.background,
+      child: SafeArea(
+        child: Container(
+          color: SciensaColors.background,
+          child: Stack(
+            children: [
+              AnimatedBuilder(
                 animation: _animationElementsController,
-                builder: (_, __) {
-                  return Positioned(
-                    left: -(_translateTicksAnimation?.value ?? 0),
-                    top: middleY + Tick.tickSize.height / 2,
-                    child: Row(
-                      children: const [
-                        Tick(),
-                        Tick(),
-                        Tick(),
-                        Tick(),
-                        Tick(),
-                      ],
-                    ),
-                  );
-                }),
-            AnimatedBuilder(
-              animation: _animationElementsController,
-              builder: (_, __) {
-                return Positioned(
-                  right: -(_translateTicksAnimation?.value ?? 0),
-                  top: middleY + Tick.tickSize.height / 2,
-                  child: Row(
-                    children: const [
-                      Tick(),
-                      Tick(),
-                      Tick(),
-                      Tick(),
-                      Tick(),
-                    ],
-                  ),
-                );
-              },
+                builder: (_, __) => _leftTicks,
+              ),
+              AnimatedBuilder(
+                animation: _animationElementsController,
+                builder: (_, __) => _rightTicks,
+              ),
+              AnimatedBuilder(
+                animation: _animationElementsController,
+                builder: (_, __) => _startButton,
+              ),
+              AnimatedBuilder(
+                animation: Listenable.merge(
+                    [_animationCronController, _animationElementsController]),
+                builder: (_, __) => _animatedTick,
+              ),
+              AnimatedBuilder(
+                animation: _animationElementsController,
+                builder: (_, __) => _counter,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget get _leftTicks {
+    return Positioned(
+      left: -(_translateTicksAnimation?.value ?? 0),
+      top: _middleY + Tick.tickSize.height / 2,
+      child: Row(
+        children: const [
+          Tick(),
+          Tick(),
+          Tick(),
+          Tick(),
+          Tick(),
+        ],
+      ),
+    );
+  }
+
+  Widget get _rightTicks {
+    return Positioned(
+      right: -(_translateTicksAnimation?.value ?? 0),
+      top: _middleY + Tick.tickSize.height / 2,
+      child: Row(
+        children: const [
+          Tick(),
+          Tick(),
+          Tick(),
+          Tick(),
+          Tick(),
+        ],
+      ),
+    );
+  }
+
+  Widget get _animatedTick {
+    final translateBgValue =
+        (_translateBackgroundAnimation?.value ?? const Size(0, 0));
+
+    final scaleBgValue = _scaleBackgroundAnimation?.value ??
+        Size(Tick.tickSize.width, animatedTickHeight);
+
+    final translatedTickValue =
+        _animationCronController.status == AnimationStatus.forward
+            ? 0.0
+            : _translateAnimatedTick?.value ?? 0;
+
+    return Positioned(
+      left: 0,
+      top: translatedTickValue,
+      child: IgnorePointer(
+        child: Transform.translate(
+          offset: Offset(_size.width / 2 - translateBgValue.width / 2,
+              _middleY - translateBgValue.height / 2),
+          child: Container(
+            width: scaleBgValue.width,
+            height: scaleBgValue.height,
+            decoration: BoxDecoration(
+              color: SciensaColors.red,
+              borderRadius: BorderRadius.circular(SciensaRadius.small),
             ),
-            AnimatedBuilder(
-              animation: _animationElementsController,
-              builder: (_, __) {
-                return Positioned(
-                  left: size.width / 2 - CircleButton.size / 2,
-                  bottom: MathHelper.remap(_animationElementsController.value,
-                      0, 1, -CircleButton.size, 80),
-                  child: CircleButton(
-                    title: 'START',
-                    onPressed: () => _startCron(size),
-                  ),
-                );
-              },
-            ),
-            AnimatedBuilder(
-              animation: Listenable.merge(
-                  [_animationCronController, _animationElementsController]),
-              builder: (_, __) {
-                return Positioned(
-                  left: 0,
-                  top: MathHelper.remap(
-                    _animationCronController.status == AnimationStatus.forward
-                        ? 1
-                        : _animationElementsController.value,
-                    0,
-                    1,
-                    middleY,
-                    0,
-                  ),
-                  child: IgnorePointer(
-                    child: Transform.translate(
-                      offset: Offset(
-                          size.width / 2 -
-                              (_translateBackgroundAnimation?.value.width ??
-                                      0) /
-                                  2,
-                          middleY -
-                              (_translateBackgroundAnimation?.value.height ??
-                                      0) /
-                                  2),
-                      child: Container(
-                        width: _scaleBackgroundAnimation?.value.width ??
-                            Tick.tickSize.width,
-                        height: _scaleBackgroundAnimation?.value.height ??
-                            Tick.tickSize.height * 1.5,
-                        decoration: BoxDecoration(
-                          color: SciensaColors.red,
-                          borderRadius:
-                              BorderRadius.circular(SciensaRadius.small),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            AnimatedBuilder(
-              animation: _animationElementsController,
-              builder: (_, __) {
-                return Positioned(
-                  left: 0,
-                  top: middleY - (_translateTextAnimation?.value ?? 0),
-                  child: SizedBox(
-                    width: size.width,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          _currentSeconds.toString(),
-                          style: const TextStyle(
-                            color: SciensaColors.white,
-                            fontSize: 70,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Opacity(
-                          opacity: (_animationElementsController.value * 10)
-                              .clamp(0, 1),
-                          child: const Text(
-                            'seconds',
-                            style: TextStyle(
-                              color: SciensaColors.gray2,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget get _startButton {
+    return Positioned(
+      left: _size.width / 2 - CircleButton.size / 2,
+      bottom: _translateButtonAnimation?.value ?? -CircleButton.size,
+      child: CircleButton(
+        label: 'START',
+        onPressed: _startCron,
+      ),
+    );
+  }
+
+  Widget get _counter {
+    return Positioned(
+      left: 0,
+      top: _middleY - (_translateTextAnimation?.value ?? 0),
+      child: SizedBox(
+        width: _size.width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(_currentSeconds.toString()).title(),
+            AnimatedOpacity(
+              opacity: _animationElementsController.value == 1 ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: const Text('seconds').subtitle(),
             ),
           ],
         ),

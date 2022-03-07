@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:test_sciensa/helpers/sciensa_colors.dart';
+import 'package:test_sciensa/helpers/sciensa_radius.dart';
+import 'package:test_sciensa/helpers/text_extension.dart';
 
 class CircleButton extends StatelessWidget {
-  final String title;
+  final String label;
   final void Function() onPressed;
 
   static const size = 150.0;
 
-  const CircleButton({Key? key, required this.title, required this.onPressed})
+  const CircleButton({Key? key, required this.label, required this.onPressed})
       : super(key: key);
 
   @override
@@ -20,12 +22,9 @@ class CircleButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: SciensaColors.red,
-          borderRadius: BorderRadius.circular(75),
+          borderRadius: BorderRadius.circular(SciensaRadius.circle),
         ),
-        child: const Text(
-          'START',
-          style: TextStyle(color: Colors.white, fontSize: 30),
-        ),
+        child: Text(label).button(),
       ),
     );
   }
