@@ -5,6 +5,8 @@ class CircleButton extends StatelessWidget {
   final String title;
   final void Function() onPressed;
 
+  static const size = 150.0;
+
   const CircleButton({Key? key, required this.title, required this.onPressed})
       : super(key: key);
 
@@ -13,8 +15,8 @@ class CircleButton extends StatelessWidget {
     return InkWell(
       onTap: onPressed,
       child: Container(
-        width: 150,
-        height: 150,
+        width: size,
+        height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: SciensaColors.red,
