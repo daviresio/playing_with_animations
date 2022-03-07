@@ -13,7 +13,7 @@ extension TextExtension on Text {
             Shadow(
               color: SciensaColors.black.withOpacity(0.4),
               offset: Offset.zero,
-              blurRadius: 10,
+              blurRadius: 6,
             ),
           ]),
     );

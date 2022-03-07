@@ -18,6 +18,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _defaultSeconds = 30;
   var _currentSeconds = 30;
+
+  var _size = Size.zero;
+  var _middleY = 0.0;
+
+  final _animatedTickHeight = Tick.tickSize.height * 1.5;
+
   Timer? _timer;
 
   late final AnimationController _animationCronController;
@@ -28,11 +34,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Animation<double>? _translateTextAnimation;
   Animation<double>? _translateButtonAnimation;
   Animation<double>? _translateAnimatedTick;
-
-  var _middleY = 0.0;
-  var _size = Size.zero;
-
-  final animatedTickHeight = Tick.tickSize.height * 1.5;
 
   @override
   void initState() {
@@ -53,7 +54,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     WidgetsBinding.instance?.addPostFrameCallback((_) {
       _translateTicksAnimation = Tween(
-        begin: MediaQuery.of(context).size.width / 2,
+        begin: _size.width / 2,
         end: 0.0,
       ).animate(CurvedAnimation(
           parent: _animationElementsController, curve: Curves.easeIn));
@@ -76,6 +77,53 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ).animate(CurvedAnimation(
           parent: _animationElementsController, curve: Curves.easeIn));
 
+      final fraction = _size.height / _defaultSeconds;
+      var _lastHeight = _size.height;
+      var _lastTranslated = _size.height;
+
+      _scaleBackgroundAnimation = TweenSequence(<TweenSequenceItem<Size>>[
+        TweenSequenceItem(
+          tween: Tween(
+            begin: Size(Tick.tickSize.width, _animatedTickHeight),
+            end: _size,
+          ).chain(CurveTween(curve: Curves.easeIn)),
+          weight: 1,
+        ),
+        ...List.generate(_defaultSeconds, (index) {
+          final _currentHeight = _lastHeight;
+          _lastHeight = _lastHeight - fraction;
+
+          return TweenSequenceItem(
+            tween: Tween(
+              begin: Size(_size.width, _currentHeight),
+              end: Size(_size.width, _lastHeight.clamp(0, _size.height)),
+            ).chain(CurveTween(curve: Curves.easeInOut)),
+            weight: 1,
+          );
+        }),
+      ]).animate(_animationCronController);
+
+      _translateBackgroundAnimation = TweenSequence(<TweenSequenceItem<Size>>[
+        TweenSequenceItem(
+          tween: Tween(
+            begin: Size.zero,
+            end: _size,
+          ).chain(CurveTween(curve: Curves.easeIn)),
+          weight: 1,
+        ),
+        ...List.generate(_defaultSeconds, (index) {
+          final _currentTranslated = _lastTranslated;
+          _lastTranslated = _lastTranslated - fraction * 2;
+          return TweenSequenceItem(
+            tween: Tween(
+              begin: Size(_size.width, _currentTranslated),
+              end: Size(_size.width, _lastTranslated),
+            ).chain(CurveTween(curve: Curves.easeInOut)),
+            weight: 1,
+          );
+        }),
+      ]).animate(_animationCronController);
+
       _animationElementsController.forward();
     });
   }
@@ -83,67 +131,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _timer?.cancel();
+    _animationCronController.dispose();
+    _animationElementsController.dispose();
     super.dispose();
   }
 
-  void _startCron() {
-    final fraction = _size.height / _defaultSeconds;
-    var _lastHeight = _size.height;
-    var _lastTranslated = _size.height;
-
-    _scaleBackgroundAnimation = TweenSequence(<TweenSequenceItem<Size>>[
-      TweenSequenceItem(
-        tween: Tween(
-          begin: Size(Tick.tickSize.width, animatedTickHeight),
-          end: _size,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 1,
-      ),
-      ...List.generate(_defaultSeconds, (index) {
-        final _currentHeight = _lastHeight;
-        _lastHeight = _lastHeight - fraction;
-
-        return TweenSequenceItem(
-          tween: Tween(
-            begin: Size(_size.width, _currentHeight),
-            end: Size(_size.width, _lastHeight.clamp(0, _size.height)),
-          ).chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 1,
-        );
-      }),
-    ]).animate(_animationCronController);
-
-    _translateBackgroundAnimation = TweenSequence(<TweenSequenceItem<Size>>[
-      TweenSequenceItem(
-        tween: Tween(
-          begin: Size.zero,
-          end: _size,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 1,
-      ),
-      ...List.generate(_defaultSeconds, (index) {
-        final _currentTranslated = _lastTranslated;
-        _lastTranslated = _lastTranslated - fraction * 2;
-        return TweenSequenceItem(
-          tween: Tween(
-            begin: Size(_size.width, _currentTranslated),
-            end: Size(_size.width, _lastTranslated),
-          ).chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 1,
-        );
-      }),
-    ]).animate(_animationCronController);
-
+  Future<void> _startCron() async {
     _animationElementsController.reverse();
     _animationCronController.forward();
 
-    setState(() {
-      _currentSeconds = _defaultSeconds;
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
         if (_currentSeconds > 0) {
-          setState(() {
-            _currentSeconds = _currentSeconds - 1;
-          });
+          _currentSeconds = _currentSeconds - 1;
+        } else {
+          _timer?.cancel();
+          _currentSeconds = _defaultSeconds;
         }
       });
     });
@@ -153,72 +156,91 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     if (_size == Size.zero) {
       _size = MediaQuery.of(context).size;
-      _middleY = _size.height / 2 - animatedTickHeight / 2;
+      _middleY = _size.height / 2 - _animatedTickHeight / 2;
     }
 
     return Material(
       color: SciensaColors.background,
       child: SafeArea(
-        child: Container(
-          color: SciensaColors.background,
-          child: Stack(
-            children: [
-              AnimatedBuilder(
-                animation: _animationElementsController,
-                builder: (_, __) => _leftTicks,
-              ),
-              AnimatedBuilder(
-                animation: _animationElementsController,
-                builder: (_, __) => _rightTicks,
-              ),
-              AnimatedBuilder(
-                animation: _animationElementsController,
-                builder: (_, __) => _startButton,
-              ),
-              AnimatedBuilder(
-                animation: Listenable.merge(
-                    [_animationCronController, _animationElementsController]),
-                builder: (_, __) => _animatedTick,
-              ),
-              AnimatedBuilder(
-                animation: _animationElementsController,
-                builder: (_, __) => _counter,
-              ),
-            ],
-          ),
+        child: Stack(
+          children: [
+            AnimatedBuilder(
+              animation: _animationElementsController,
+              builder: (_, __) => _leftTicks,
+            ),
+            AnimatedBuilder(
+              animation: _animationElementsController,
+              builder: (_, __) => _rightTicks,
+            ),
+            AnimatedBuilder(
+              animation: _animationElementsController,
+              builder: (_, __) => _startButton,
+            ),
+            AnimatedBuilder(
+              animation: Listenable.merge(
+                  [_animationCronController, _animationElementsController]),
+              builder: (_, __) => _animatedTick,
+            ),
+            AnimatedBuilder(
+              animation: _animationElementsController,
+              builder: (_, __) => _counter,
+            ),
+          ],
         ),
       ),
     );
   }
 
+  List<Widget> get _ticksList {
+    return const [
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+      Tick(),
+      SizedBox(width: SciensaSpacing.xs),
+    ];
+  }
+
+  final _tickListSize = SciensaSpacing.xs * 8 + Tick.tickSize.width * 7;
+
   Widget get _leftTicks {
+    var _extraSize = _tickListSize - _size.width / 2;
+
     return Positioned(
-      left: -(_translateTicksAnimation?.value ?? 0),
+      left: -((_translateTicksAnimation?.value ?? 0) + _extraSize),
       top: _middleY + Tick.tickSize.height / 2,
-      child: Row(
-        children: const [
-          Tick(),
-          Tick(),
-          Tick(),
-          Tick(),
-          Tick(),
-        ],
+      child: SizedBox(
+        width: _tickListSize,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: _ticksList,
+        ),
       ),
     );
   }
 
   Widget get _rightTicks {
+    var _extraSize = _tickListSize - _size.width / 2;
+
     return Positioned(
-      right: -(_translateTicksAnimation?.value ?? 0),
+      right: -((_translateTicksAnimation?.value ?? 0) + _extraSize),
       top: _middleY + Tick.tickSize.height / 2,
-      child: Row(
-        children: const [
-          Tick(),
-          Tick(),
-          Tick(),
-          Tick(),
-          Tick(),
-        ],
+      child: SizedBox(
+        width: _tickListSize,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: _ticksList,
+        ),
       ),
     );
   }
@@ -228,7 +250,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         (_translateBackgroundAnimation?.value ?? const Size(0, 0));
 
     final scaleBgValue = _scaleBackgroundAnimation?.value ??
-        Size(Tick.tickSize.width, animatedTickHeight);
+        Size(Tick.tickSize.width, _animatedTickHeight);
 
     final translatedTickValue =
         _animationCronController.status == AnimationStatus.forward
@@ -240,8 +262,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       top: translatedTickValue,
       child: IgnorePointer(
         child: Transform.translate(
-          offset: Offset(_size.width / 2 - translateBgValue.width / 2,
-              _middleY - translateBgValue.height / 2),
+          offset: Offset(
+            _size.width / 2 - translateBgValue.width / 2,
+            _middleY - translateBgValue.height / 2,
+          ),
           child: Container(
             width: scaleBgValue.width,
             height: scaleBgValue.height,

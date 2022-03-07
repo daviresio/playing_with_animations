@@ -14,17 +14,20 @@ class CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPressed,
-      child: Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: SciensaColors.red,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(SciensaRadius.circle),
+      child: Material(
+        color: SciensaColors.red,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(SciensaRadius.circle),
+          child: Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            child: Text(label).button(),
+          ),
         ),
-        child: Text(label).button(),
       ),
     );
   }
